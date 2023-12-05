@@ -149,17 +149,20 @@ if(CGAL_FOUND)
                                 src/meshing/MVS/OBJ.cpp
                                 src/meshing/MVS/IBFS.cpp
                                 )
-target_link_libraries(r3live_meshing 
-                                  ${catkin_LIBRARIES}
-                                  ${Boost_LIBRARIES}
-                                  ${Boost_FILESYSTEM_LIBRARY}
-                                  ${Boost_SERIALIZATION_LIBRARY} # serialization
-                                  ${CGAL_LIBS}
-                                  ${OpenCV_LIBRARIES}
-                                  ${JPEG_LIBRARIES} 
-                                  gmp
-                                  pcl_common 
-                                  pcl_io
-                                  pcl_kdtree)
+  target_link_libraries(r3live_meshing
+						  ${catkin_LIBRARIES}
+						  ${Boost_LIBRARIES}
+						  ${Boost_FILESYSTEM_LIBRARY}
+						  ${Boost_SERIALIZATION_LIBRARY} # serialization
+						  ${CGAL_LIBS}
+						  ${OpenCV_LIBRARIES}
+						  ${JPEG_LIBRARIES}
+						  gmp#GMP is part of the GNU project (although its website being off gnu.org may cause confusion),
+							#and is distributed under the GNU Lesser General Public License (LGPL).
+							#GMP is used for integer arithmetic in many computer algebra systems such as Mathematica[9] and Maple.[10]
+							#It is also used in the Computational Geometry Algorithms Library (CGAL).
+						  pcl_common
+						  pcl_io
+						  pcl_kdtree)
 
 endif()

@@ -1320,5 +1320,5 @@ bool ReconstructMesh( float distInsert, bool bUseFreeSpaceSupport, unsigned nIte
     }
 
     return true;
-}
+}//end function ReconstructMesh
 /*----------------------------------------------------------------*/

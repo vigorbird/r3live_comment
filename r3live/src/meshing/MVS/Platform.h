@@ -51,9 +51,11 @@ class MVS_API Platform
 public:
 	// structure describing a normalized camera mounted on a platform
 	typedef CameraIntern Camera;
+    //#define CLISTDEF0IDX(TYPE,IDXTYPE) SEACAVE::cList< TYPE, const TYPE&, 0, 16, IDXTYPE >
 	typedef CLISTDEF0IDX(Camera,uint32_t) CameraArr;
 
-	// structure describing a pose along the trajectory of a platform
+
+// structure describing a pose along the trajectory of a platform
 	struct Pose {
 		RMatrix R; // platform's rotation matrix
 		CMatrix C; // platform's translation vector in the global coordinate system
@@ -69,7 +71,7 @@ public:
 
 public:
 	String name; // platform's name
-	CameraArr cameras; // cameras mounted on the platform
+	CameraArr cameras; // cameras mounted on the platform 在这个类里面被宏定义了
 	PoseArr poses; // trajectory of the platform
 
 public:
@@ -77,6 +79,7 @@ public:
 
 	Camera GetCamera(uint32_t cameraID, uint32_t poseID) const;
 
+    //默认会开启
 	#ifdef _USE_BOOST
 	// implement BOOST serialization
 	template <class Archive>

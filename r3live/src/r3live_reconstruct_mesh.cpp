@@ -71,7 +71,7 @@ std::shared_ptr< Common_tools::ThreadPool > m_thread_pool_ptr;
 std::string                                 data_path = std::string( "/home/ziv/color_temp_r3live/" );
 
 std::string g_working_dir;
-std::string g_offline_map_name;
+std::string g_offline_map_name;//地图名称
 double      g_insert_pt_dis;
 bool        bUseConstantWeight;
 bool        g_if_use_free_space_support;
@@ -82,8 +82,9 @@ double      g_if_remove_spurious;
 bool        g_if_remove_spikes;
 int         g_close_holes_dist;
 int         g_smooth_mesh_factor;
-double      g_add_keyframe_t = 0.15;
-double      g_add_keyframe_R = 10;
+//只有这两个阈值都满足条件时才会添加关键帧
+double      g_add_keyframe_t = 0.15;//关键帧添加的距离阈值
+double      g_add_keyframe_R = 10;//关键帧添加的姿态阈值
 int         g_texturing_smooth_factor = 3;
 std::string g_str_export_type;
 std::string strConfigFileName;
@@ -94,12 +95,14 @@ pcl::KdTreeFLANN<PointType> kdtree;
 
 
 // TODO
-void r3live_map_to_mvs_scene( Offline_map_recorder &r3live_map_recorder, MVS::ImageArr &m_images, MVS::PointCloud &m_pointcloud )
+void r3live_map_to_mvs_scene( Offline_map_recorder &r3live_map_recorder,//input
+                              MVS::ImageArr &m_images,//output
+                              MVS::PointCloud &m_pointcloud )//output
 {
     vec_3   last_pose_t = vec_3( -100, 0, 0 );
     eigen_q last_pose_q = eigen_q( 1, 0, 0, 1 );
     int     m_image_id = 0;
-    int     number_of_image_frame = r3live_map_recorder.m_pts_in_views_vec.size();
+    int     number_of_image_frame = r3live_map_recorder.m_pts_in_views_vec.size();//
     cout << "Number of image frames: " << number_of_image_frame << endl;
 
     Eigen::Matrix3d camera_intrinsic;
@@ -121,18 +124,21 @@ void r3live_map_to_mvs_scene( Offline_map_recorder &r3live_map_recorder, MVS::Im
     m_platforms.cameras[ 0 ].R = Eigen::Matrix3d::Identity();
     m_platforms.cameras[ 0 ].C = Eigen::Vector3d::Zero();
 
+    //下面 这个循环主要是遍历所有的frame，然后更新每个每个关键帧的位姿和投影矩阵，对应状态变量m_images
+    //并更新哪些点被相机看到，对应状态变量：m_pts_with_view
     std::unordered_map< std::shared_ptr< RGB_pts >, std::vector< int > > m_pts_with_view;
     for ( int frame_idx = 0; frame_idx < number_of_image_frame; frame_idx++ )
     {
+        //拿到每一个frame的位姿
         std::shared_ptr< Image_frame > img_ptr = r3live_map_recorder.m_image_pose_vec[ frame_idx ];
-        vec_3                              pose_t = -img_ptr->m_pose_c2w_q.toRotationMatrix().transpose() * img_ptr->m_pose_c2w_t;
-        if ( ( pose_t - last_pose_t ).norm() < g_add_keyframe_t && ( img_ptr->m_pose_c2w_q.angularDistance( last_pose_q ) * 57.3 < g_add_keyframe_R ) )
+        vec_3                          pose_t = -img_ptr->m_pose_c2w_q.toRotationMatrix().transpose() * img_ptr->m_pose_c2w_t;
+        if ( ( pose_t - last_pose_t ).norm() < g_add_keyframe_t &&
+             ( img_ptr->m_pose_c2w_q.angularDistance( last_pose_q ) * 57.3 < g_add_keyframe_R ) )
         {
             continue;
         }
-        MVS::Platform::Pose pose;
-        MVS::Image          image;
 
+        MVS::Platform::Pose pose;
         pose.R = img_ptr->m_pose_c2w_q.toRotationMatrix();
         pose.C = pose_t;
         last_pose_t = pose_t;
@@ -140,6 +146,7 @@ void r3live_map_to_mvs_scene( Offline_map_recorder &r3live_map_recorder, MVS::Im
         m_platforms.poses.push_back( pose );
         // cout << "[ " << frame_idx << " ]: q = " << img_ptr->m_pose_c2w_q.coeffs().transpose() << " | "<< pose_t.transpose() << endl;
 
+        MVS::Image          image;
         image.ID = m_image_id;
         m_image_id++;
         image.poseID = image.ID;
@@ -147,11 +154,11 @@ void r3live_map_to_mvs_scene( Offline_map_recorder &r3live_map_recorder, MVS::Im
         image.cameraID = 0;
         image.width = img_ptr->m_img_cols;
         image.height = img_ptr->m_img_rows;
+        //获取相机的绝对位姿
         image.camera = Camera( m_platforms.GetCamera( image.cameraID, image.poseID ) );
-
         // compute the unnormalized camera
         image.camera.K = image.camera.GetK< REAL >( image_width, image_heigh );
-        image.camera.ComposeP();
+        image.camera.ComposeP();//更新相机的投影矩阵
         m_images.push_back( image );
 
         for ( int pt_idx = 0; pt_idx < r3live_map_recorder.m_pts_in_views_vec[ frame_idx ].size(); pt_idx++ )
@@ -161,7 +168,7 @@ void r3live_map_to_mvs_scene( Offline_map_recorder &r3live_map_recorder, MVS::Im
         cout << ANSI_DELETE_CURRENT_LINE;
         printf( "\33[2K\rAdd frames: %u%%, total_points = %u ...", frame_idx * 100 / ( number_of_image_frame - 1 ), m_pts_with_view.size() );
         ANSI_SCREEN_FLUSH;
-    }
+    }//end遍历完所有的帧
     cout << endl;
     cout << "Number of image frames: " << m_image_id << endl;
     cout << "Number of points " << m_pts_with_view.size() << endl;
@@ -178,13 +185,18 @@ void r3live_map_to_mvs_scene( Offline_map_recorder &r3live_map_recorder, MVS::Im
     }
     pcl_pc_rgb->clear();
     pcl_pc_rgb->reserve(1e8);
-    for ( std::unordered_map< std::shared_ptr< RGB_pts >, std::vector< int > >::iterator it = m_pts_with_view.begin(); it != m_pts_with_view.end(); it++ )
+
+
+    for ( std::unordered_map< std::shared_ptr< RGB_pts >, std::vector< int > >::iterator it = m_pts_with_view.begin();
+        it != m_pts_with_view.end();
+        it++ )
     {
+        //如果这个点被观测数量少于5个 则不会进入这个条件
         if ( ( it->second.size() >= 0 ) && ( ( it->first )->m_N_rgb > 5 ) )
         {
             acc_count++;
             MVS::PointCloud::Point    pt3d;
-            MVS::PointCloud::ViewArr  pt_view_arr;
+            MVS::PointCloud::ViewArr  pt_view_arr;//存储哪些frame观测到过这个点
             MVS::PointCloud::ColorArr color_arr;
             MVS::PointCloud::Color    color;
             vec_3                     pt_pos = ( ( it->first ) )->get_pos();
@@ -215,7 +227,7 @@ void r3live_map_to_mvs_scene( Offline_map_recorder &r3live_map_recorder, MVS::Im
                 printf( "\33[2K\rRetring points: %u%% ...", temp_int * 10 / ( m_pts_with_view.size() / 10 ) );
                 ANSI_SCREEN_FLUSH;
             }
-        }
+        }//end if ( ( it->second.size() >= 0 ) && ( ( it->first )->m_N_rgb > 5 ) )
         temp_int++;
     }
     printf( "\33[2K\rRetriving points: %u%% ...", 100 );
@@ -224,7 +236,7 @@ void r3live_map_to_mvs_scene( Offline_map_recorder &r3live_map_recorder, MVS::Im
     m_pointcloud.colors.resize( point_index );
     cout << endl;
     cout << "Total available points number " << point_index << endl;
-}
+}//end function r3live_map_to_mvs_scene
 
 
 void build_pcl_kdtree( Offline_map_recorder &r3live_map_recorder )
@@ -266,20 +278,44 @@ void reconstruct_mesh( Offline_map_recorder &r3live_map_recorder, std::string ou
     MVS::PointCloud m_pointcloud;
     MVS::Mesh       reconstructed_mesh;
 
+    //
     r3live_map_to_mvs_scene( r3live_map_recorder, m_images, m_pointcloud );
     // return;
-    
-    ReconstructMesh( g_insert_pt_dis, g_if_use_free_space_support, 4, g_thickness_factor, g_quality_factor, reconstructed_mesh, m_images, m_pointcloud );
+
+
+    ReconstructMesh( g_insert_pt_dis,
+                     g_if_use_free_space_support,
+                     4,
+                     g_thickness_factor,
+                     g_quality_factor,
+                     reconstructed_mesh,//out
+                     m_images,//
+                     m_pointcloud );//
     printf( "Mesh reconstruction completed: %u vertices, %u faces\n", reconstructed_mesh.vertices.GetSize(), reconstructed_mesh.faces.GetSize() );
     
     cout << "Clean mesh [1/3]: ";
-    reconstructed_mesh.Clean( g_decimate_mesh, g_if_remove_spurious, g_if_remove_spikes, g_close_holes_dist, g_smooth_mesh_factor, false );
+    reconstructed_mesh.Clean( g_decimate_mesh,
+                              g_if_remove_spurious,
+                              g_if_remove_spikes,
+                              g_close_holes_dist,
+                              g_smooth_mesh_factor,
+                              false );
     
     cout << "Clean mesh [2/3]: ";
-    reconstructed_mesh.Clean( 1.f, 0.f, g_if_remove_spikes, g_close_holes_dist, 0, false ); // extra cleaning trying to close more holes
+    reconstructed_mesh.Clean( 1.f,
+                              0.f,
+                              g_if_remove_spikes,
+                              g_close_holes_dist,
+                              0,
+                              false ); // extra cleaning trying to close more holes
     
     cout << "Clean mesh [3/3]: ";
-    reconstructed_mesh.Clean( 1.f, 0.f, false, 0, 0, true ); // extra cleaning to
+    reconstructed_mesh.Clean( 1.f,
+                              0.f,
+                              false,
+                              0,
+                              0,
+                              true ); // extra cleaning to
                                                              // remove non-manifold
                                                              // problems created by
                                                              // closing holes
@@ -377,14 +413,16 @@ int main( int argc, char **argv )
     Common_tools::printf_software_version();
     ros::init( argc, argv, "R3LIVE_meshing" );
     ros::NodeHandle m_ros_node_handle;
-    load_parameter( m_ros_node_handle );
+    load_parameter( m_ros_node_handle );//读取配置参数
 
     Global_map       global_map( 0 );
-    Offline_map_recorder r3live_map_recorder;
+    Offline_map_recorder r3live_map_recorder;//从输入点云 读取进来的数据结构
     cout << "Open file from: " << g_offline_map_name << endl;
     global_map.m_if_reload_init_voxel_and_hashed_pts = 0;
     r3live_map_recorder.m_global_map = &global_map;
-    
+
+    //g_offline_map_name = 输入点云地图 全路径名称
+    //主要调用反序列化方法 读取数据
     Common_tools::load_obj_from_file( &r3live_map_recorder, g_offline_map_name );
     
     cout << "Number of rgb points: " << global_map.m_rgb_pts_vec.size() << endl;

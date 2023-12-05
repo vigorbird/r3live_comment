@@ -119,13 +119,13 @@ inline void load_obj_from_file( T *obj, std::string file_name, int if_bin = 1 )
     {
         if ( if_bin )
         {
-            boost::archive::binary_iarchive ia( ifs );
+            boost::archive::binary_iarchive ia( ifs );//反序列化
             ia >> *obj;
             ifs.close();
         }
         else
         {
-            boost::archive::text_iarchive ia( ifs );
+            boost::archive::text_iarchive ia( ifs );//反序列化
             ia >> *obj;
             ifs.close();
         }
@@ -135,7 +135,7 @@ inline void load_obj_from_file( T *obj, std::string file_name, int if_bin = 1 )
         // cout << ANSI_COLOR_RED_BOLD << "Load obj to file [" << file_name << "] fail!, file can not open" << endl;
     }
 }
-}
+}//end namespce Common_tools
 
 namespace boost
 {
