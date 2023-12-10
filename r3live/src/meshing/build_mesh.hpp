@@ -273,7 +273,7 @@ struct vert_info_t
 
 struct cell_info_t
 {
-    typedef edge_cap_t Type;
+    typedef edge_cap_t Type;//Type = float
     Type               wright_face[ 4 ]; // faces' weight from the cell outwards
     Type               weight_s;         // cell's weight towards s-source
     Type               weight_t;         // cell's weight towards t-sink
@@ -309,8 +309,8 @@ void vert_info_t::AllocateInfo()
 
 struct camera_cell_t
 {
-    cell_handle_t          cell;   // cell containing the camera
-    std::vector< facet_t > facets; // all facets on the convex-hull in view of the camera (ordered by importance)
+    cell_handle_t          cell;   // cell containing the camera cgal数据结构
+    std::vector< facet_t > facets; // all facets on the convex-hull in view of the camera (ordered by importance) cgal数据结构
 };
 
 struct adjacent_vertex_back_inserter_t
@@ -427,7 +427,7 @@ void fetchCellFacets( const delaunay_t &Tr, const std::vector< facet_t > &hullFa
     // find all facets on the convex-hull in camera's view
     // create the 4 frustum planes
     ASSERT( facets.empty() );
-    typedef TFrustum< REAL, 4 > Frustum;
+    typedef TFrustum< REAL, 4 > Frustum;//这个是视体的概念，ref to: https://zh.wikipedia.org/zh-tw/%E8%A7%86%E4%BD%93
     Frustum                     frustum( imageData.camera.P, imageData.width, imageData.height, 0, 1 );
     // loop over all cells
     const point_t ptOrigin( MVS2CGAL( imageData.camera.C ) );
@@ -840,8 +840,14 @@ float computePlaneSphereAngle( const delaunay_t &Tr, const facet_t &facet )
 // and the surface is such extracted.
 
 // Input data: mesh, pointcloud, camera positions, pts_in camera_ray
-bool ReconstructMesh( float distInsert, bool bUseFreeSpaceSupport, unsigned nItersFixNonManifold, float kSigma, float kQual, Mesh &m_mesh,
-                      ImageArr &m_images, PointCloud &m_pointcloud )
+bool ReconstructMesh( float distInsert, //默认等于1.0米
+                      bool bUseFreeSpaceSupport, //默认等于false
+                      unsigned nItersFixNonManifold,
+                      float kSigma,
+                      float kQual,
+                      Mesh &m_mesh,//output
+                      ImageArr &m_images,//input
+                      PointCloud &m_pointcloud )//input
 {
     float kb = 4.f;
     float kf = 3.f;
@@ -856,16 +862,16 @@ bool ReconstructMesh( float distInsert, bool bUseFreeSpaceSupport, unsigned nIte
     m_mesh.Release();
 
     // create the Delaunay triangulation
-    delaunay_t                   delaunay;
-    std::vector< cell_info_t >   infoCells;
+    delaunay_t                   delaunay;//cgal 数据结构
+    std::vector< cell_info_t >   infoCells;//
     std::vector< camera_cell_t > camCells;
-    std::vector< facet_t >       hullFacets;
+    std::vector< facet_t >       hullFacets;//cgal数据结构
     
     {
         TD_TIMER_STARTD();
 
-        std::vector< point_t >        vertices( m_pointcloud.points.GetSize() );
-        std::vector< std::ptrdiff_t > indices( m_pointcloud.points.GetSize() );
+        std::vector< point_t >        vertices( m_pointcloud.points.GetSize() );//cgal的数据结构
+        std::vector< std::ptrdiff_t > indices( m_pointcloud.points.GetSize() );//ptrdiff_t = signed int
 
         // ===============================================
         // fetch points
@@ -879,7 +885,7 @@ bool ReconstructMesh( float distInsert, bool bUseFreeSpaceSupport, unsigned nIte
         
         // ===============================================
         // sort vertices
-        typedef CGAL::Spatial_sort_traits_adapter_3< delaunay_t::Geom_traits, point_t * > Search_traits;
+        typedef CGAL::Spatial_sort_traits_adapter_3< delaunay_t::Geom_traits, point_t * > Search_traits;//
         CGAL::spatial_sort( indices.begin(), indices.end(), Search_traits( &vertices[ 0 ], delaunay.geom_traits() ) );
         
         // ===============================================
@@ -889,7 +895,8 @@ bool ReconstructMesh( float distInsert, bool bUseFreeSpaceSupport, unsigned nIte
         vertex_handle_t         hint;
         delaunay_t::Locate_type lt;
         int                     li, lj;
-        
+
+        //遍历所有的index
         std::for_each( indices.cbegin(), indices.cend(), [&]( size_t idx ) {
             const point_t &            p = vertices[ idx ];
             const PointCloud::Point &  point = m_pointcloud.points[ idx ];
@@ -1085,7 +1092,7 @@ bool ReconstructMesh( float distInsert, bool bUseFreeSpaceSupport, unsigned nIte
                     const camera_cell_t &camCell = camCells[ imageID ];
                     // compute the ray used to find point intersection
                     const Point3   vecCamPoint( pt - camera.C );
-                    const REAL     invLenCamPoint( REAL( 1 ) / norm( vecCamPoint ) );
+                    const REAL     invLenCamPoint( REAL( 1 ) / norm( vecCamPoint ) );//REAL = double
                     intersection_t inter( pt, Point3( vecCamPoint * invLenCamPoint ) );
                     // find faces intersected by the camera-point segment
                     const segment_t segCamPoint( MVS2CGAL( camera.C ), p );

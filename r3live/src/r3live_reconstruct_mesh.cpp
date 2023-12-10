@@ -278,13 +278,13 @@ void reconstruct_mesh( Offline_map_recorder &r3live_map_recorder, std::string ou
     MVS::PointCloud m_pointcloud;
     MVS::Mesh       reconstructed_mesh;
 
-    //
+    //主要是组织数据 维持点和数据的共视关系
     r3live_map_to_mvs_scene( r3live_map_recorder, m_images, m_pointcloud );
     // return;
 
 
-    ReconstructMesh( g_insert_pt_dis,
-                     g_if_use_free_space_support,
+    ReconstructMesh( g_insert_pt_dis,//默认等于1.0
+                     g_if_use_free_space_support,//默认等于false
                      4,
                      g_thickness_factor,
                      g_quality_factor,
